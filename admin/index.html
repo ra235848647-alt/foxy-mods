@@ -7,138 +7,234 @@
 <title>FOXY ADMIN</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#10121a;color:white;font-family:Arial,sans-serif;padding:20px}
-header{background:#1b2030;padding:22px;border-radius:16px;margin-bottom:20px}
-h1{color:#ff9d35;margin:0}
+body{margin:0;background:#101010;color:#fff;font-family:Arial,sans-serif;padding:20px}
+header{max-width:850px;margin:20px auto}
+h1{color:#ff8a24}
+.panel{max-width:850px;margin:15px auto;background:#1b1b1b;padding:20px;border-radius:15px}
+input,select,textarea{width:100%;padding:13px;margin:7px 0 14px;background:#252525;color:white;border:1px solid #444;border-radius:9px;font-size:15px}
+textarea{min-height:85px}
+label{color:#ffb36f}
+button{border:0;border-radius:9px;padding:12px 17px;margin:4px;background:#ff8a24;color:#17100a;font-weight:bold;cursor:pointer}
+button.secondary{background:#333;color:white}
+button.danger{background:#a83232;color:white}
+.item{background:#252525;padding:14px;border-radius:10px;margin:10px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.item span{flex:1;min-width:130px}
 small{color:#aaa}
-.card{background:#1b2030;padding:18px;border-radius:14px;margin-bottom:15px}
-input,textarea{width:100%;padding:13px;margin:7px 0;background:#10121a;color:white;border:1px solid #34394b;border-radius:9px}
-button{border:0;padding:12px 17px;border-radius:9px;background:#ff9d35;color:#111;font-weight:bold;margin:5px;cursor:pointer}
-.delete{background:#e74c3c;color:white}
-.mod{background:#252b3b;padding:13px;border-radius:10px;margin-top:10px}
 </style>
 </head>
 <body>
 
 <header>
 <h1>🦊 FOXY ADMIN</h1>
-<p>لوحة إدارة المودات</p>
-<small>إدارة موقع FOXY MODS</small>
+<p>لوحة إدارة مودات FOXY MODS</p>
+<small>التعديلات تُحفظ في ملف JSON وتحتاج رفعه إلى GitHub لنشرها.</small>
 </header>
 
-<div class="card">
-<h2>➕ إضافة مود جديد</h2>
-<input id="name" placeholder="اسم المود">
-<input id="image" placeholder="رابط صورة المود">
-<textarea id="description" placeholder="وصف المود"></textarea>
-<input id="download" placeholder="رابط التحميل">
-<button onclick="addMod()">إضافة المود</button>
-</div>
+<section class="panel">
+<h2 id="formTitle">➕ إضافة مود جديد</h2>
 
-<div class="card">
-<h2>📦 المودات</h2>
-<div id="mods"></div>
-</div>
+<label>اسم المود</label>
+<input id="name" placeholder="مثلاً: Food & Stuff">
 
-<div class="card">
+<label>النوع</label>
+<select id="type">
+<option value="mod">Mod</option>
+<option value="map">Map</option>
+<option value="resource">Resource Pack</option>
+</select>
+
+<label>المنصة</label>
+<select id="platform">
+<option value="bedrock">Bedrock</option>
+<option value="java">Java</option>
+</select>
+
+<label>الحالة</label>
+<input id="status" placeholder="متاح الآن">
+
+<label>الصورة أو الإيموجي</label>
+<input id="image" placeholder="🍔">
+
+<label>الوصف</label>
+<textarea id="description" placeholder="اكتب وصف المود"></textarea>
+
+<label>الإصدار</label>
+<input id="version" placeholder="1.0">
+
+<label>رابط التحميل</label>
+<input id="download" placeholder="https://...">
+
+<button id="saveButton" onclick="saveMod()">إضافة المود</button>
+<button class="secondary" onclick="resetForm()">إلغاء</button>
+</section>
+
+<section class="panel">
+<h2>📦 المودات الحالية</h2>
+<div id="list">جاري التحميل...</div>
+</section>
+
+<section class="panel">
 <h2>💾 حفظ البيانات</h2>
-<p>صدّر بيانات المودات في ملف JSON لرفعها إلى GitHub.</p>
-<button onclick="exportData()">تحميل ملف البيانات</button>
-</div>
+<p>بعد التعديل، نزّل ملف mods.json ثم ارفعه إلى المستودع الرئيسي في GitHub مكان الملف القديم.</p>
+<button onclick="exportJSON()">تنزيل mods.json</button>
+<button class="secondary" onclick="importJSON()">استيراد ملف JSON</button>
+<input type="file" id="fileInput" accept=".json,application/json" hidden>
+</section>
 
 <script>
-let mods = JSON.parse(localStorage.getItem("foxy_mods") || "[]");
+let mods = [];
+let editingId = null;
 
-function save(){
- localStorage.setItem("foxy_mods",JSON.stringify(mods));
- show();
+const fields = [
+'name','type','platform','status',
+'image','description','version','download'
+];
+
+function safeId() {
+ return 'mod-' + Date.now() + '-' + Math.floor(Math.random()*1000);
 }
 
-function addMod(){
- const name=document.getElementById("name").value.trim();
- const image=document.getElementById("image").value.trim();
- const description=document.getElementById("description").value.trim();
- const download=document.getElementById("download").value.trim();
-
- if(!name){alert("اكتب اسم المود");return;}
-
- mods.push({name,image,description,download});
- save();
-
- document.getElementById("name").value="";
- document.getElementById("image").value="";
- document.getElementById("description").value="";
- document.getElementById("download").value="";
- alert("تمت إضافة المود!");
-}
-
-function removeMod(i){
- if(confirm("هل تريد حذف هذا المود؟")){
- mods.splice(i,1);
- save();
+async function loadMods() {
+ try {
+  const response = await fetch('../mods.json?time=' + Date.now());
+  if (!response.ok) throw new Error();
+  const data = await response.json();
+  if (!Array.isArray(data)) throw new Error();
+  mods = data;
+  render();
+ } catch {
+  mods = [];
+  render();
+  document.getElementById('list').textContent =
+   'تعذر تحميل mods.json. يمكنك استيراده من جهازك.';
  }
 }
 
-function editMod(i){
- const name=prompt("اسم المود",mods[i].name);
- if(name===null)return;
- const description=prompt("الوصف",mods[i].description);
- if(description===null)return;
- const image=prompt("رابط الصورة",mods[i].image);
- if(image===null)return;
- const download=prompt("رابط التحميل",mods[i].download);
- if(download===null)return;
+function render() {
+ const list = document.getElementById('list');
+ list.replaceChildren();
 
- mods[i]={name,image,description,download};
- save();
-}
-
-function show(){
- const area=document.getElementById("mods");
- area.innerHTML="";
-
- if(!mods.length){
- area.innerHTML="<p>لا توجد مودات حتى الآن.</p>";
- return;
+ if (!mods.length) {
+  list.textContent = 'لا توجد مودات.';
+  return;
  }
 
- mods.forEach((m,i)=>{
- const div=document.createElement("div");
- div.className="mod";
+ mods.forEach(mod => {
+  const item = document.createElement('div');
+  item.className = 'item';
 
- const title=document.createElement("h3");
- title.textContent=m.name;
- const desc=document.createElement("p");
- desc.textContent=m.description;
+  const title = document.createElement('span');
+  title.textContent = (mod.image || '📦') + ' ' + (mod.name || 'بدون اسم');
 
- const edit=document.createElement("button");
- edit.textContent="تعديل";
- edit.onclick=()=>editMod(i);
+  const edit = document.createElement('button');
+  edit.textContent = 'تعديل';
+  edit.onclick = () => editMod(mod.id);
 
- const del=document.createElement("button");
- del.textContent="حذف";
- del.className="delete";
- del.onclick=()=>removeMod(i);
+  const del = document.createElement('button');
+  del.textContent = 'حذف';
+  del.className = 'danger';
+  del.onclick = () => deleteMod(mod.id);
 
- div.append(title,desc,edit,del);
- area.appendChild(div);
+  item.append(title, edit, del);
+  list.append(item);
  });
 }
 
-function exportData(){
- const blob=new Blob(
- [JSON.stringify(mods,null,2)],
- {type:"application/json"}
+function saveMod() {
+ const values = {};
+ fields.forEach(id => {
+  values[id] = document.getElementById(id).value.trim();
+ });
+
+ if (!values.name) {
+  alert('اكتب اسم المود أولاً');
+  return;
+ }
+
+ if (values.download) {
+  try {
+   const url = new URL(values.download);
+   if (!['http:','https:'].includes(url.protocol)) throw new Error();
+  } catch {
+   alert('رابط التحميل غير صحيح');
+   return;
+  }
+ }
+
+ if (editingId) {
+  const index = mods.findIndex(m => m.id === editingId);
+  if (index !== -1) mods[index] = {...mods[index], ...values};
+ } else {
+  mods.push({id:safeId(), ...values});
+ }
+
+ resetForm();
+ render();
+}
+
+function editMod(id) {
+ const mod = mods.find(m => m.id === id);
+ if (!mod) return;
+
+ fields.forEach(field => {
+  document.getElementById(field).value = mod[field] || '';
+ });
+
+ editingId = id;
+ document.getElementById('formTitle').textContent = '✏️ تعديل المود';
+ document.getElementById('saveButton').textContent = 'حفظ التعديل';
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function deleteMod(id) {
+ if (!confirm('هل تريد حذف هذا المود؟')) return;
+ mods = mods.filter(m => m.id !== id);
+ render();
+ resetForm();
+}
+
+function resetForm() {
+ fields.forEach(id => document.getElementById(id).value = '');
+ editingId = null;
+ document.getElementById('formTitle').textContent = '➕ إضافة مود جديد';
+ document.getElementById('saveButton').textContent = 'إضافة المود';
+}
+
+function exportJSON() {
+ const blob = new Blob(
+  [JSON.stringify(mods,null,2)],
+  {type:'application/json'}
  );
- const url=URL.createObjectURL(blob);
- const a=document.createElement("a");
- a.href=url;
- a.download="mods.json";
+ const url = URL.createObjectURL(blob);
+ const a = document.createElement('a');
+ a.href = url;
+ a.download = 'mods.json';
  a.click();
  URL.revokeObjectURL(url);
 }
 
-show();
+function importJSON() {
+ document.getElementById('fileInput').click();
+}
+
+document.getElementById('fileInput').addEventListener('change', async e => {
+ const file = e.target.files[0];
+ if (!file) return;
+
+ try {
+  const data = JSON.parse(await file.text());
+  if (!Array.isArray(data)) throw new Error();
+  mods = data;
+  resetForm();
+  render();
+  alert('تم استيراد المودات');
+ } catch {
+  alert('ملف JSON غير صالح');
+ }
+ e.target.value = '';
+});
+
+loadMods();
 </script>
 </body>
 </html>
