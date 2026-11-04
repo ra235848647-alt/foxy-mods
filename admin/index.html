@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOXY ADMIN</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10121a;color:white;font-family:Arial,sans-serif;padding:20px}
+header{background:#1b2030;padding:22px;border-radius:16px;margin-bottom:20px}
+h1{color:#ff9d35;margin:0}
+small{color:#aaa}
+.card{background:#1b2030;padding:18px;border-radius:14px;margin-bottom:15px}
+input,textarea{width:100%;padding:13px;margin:7px 0;background:#10121a;color:white;border:1px solid #34394b;border-radius:9px}
+button{border:0;padding:12px 17px;border-radius:9px;background:#ff9d35;color:#111;font-weight:bold;margin:5px;cursor:pointer}
+.delete{background:#e74c3c;color:white}
+.mod{background:#252b3b;padding:13px;border-radius:10px;margin-top:10px}
+</style>
+</head>
+<body>
+
+<header>
+<h1>🦊 FOXY ADMIN</h1>
+<p>لوحة إدارة المودات</p>
+<small>إدارة موقع FOXY MODS</small>
+</header>
+
+<div class="card">
+<h2>➕ إضافة مود جديد</h2>
+<input id="name" placeholder="اسم المود">
+<input id="image" placeholder="رابط صورة المود">
+<textarea id="description" placeholder="وصف المود"></textarea>
+<input id="download" placeholder="رابط التحميل">
+<button onclick="addMod()">إضافة المود</button>
+</div>
+
+<div class="card">
+<h2>📦 المودات</h2>
+<div id="mods"></div>
+</div>
+
+<div class="card">
+<h2>💾 حفظ البيانات</h2>
+<p>صدّر بيانات المودات في ملف JSON لرفعها إلى GitHub.</p>
+<button onclick="exportData()">تحميل ملف البيانات</button>
+</div>
+
+<script>
+let mods = JSON.parse(localStorage.getItem("foxy_mods") || "[]");
+
+function save(){
+ localStorage.setItem("foxy_mods",JSON.stringify(mods));
+ show();
+}
+
+function addMod(){
+ const name=document.getElementById("name").value.trim();
+ const image=document.getElementById("image").value.trim();
+ const description=document.getElementById("description").value.trim();
+ const download=document.getElementById("download").value.trim();
+
+ if(!name){alert("اكتب اسم المود");return;}
+
+ mods.push({name,image,description,download});
+ save();
+
+ document.getElementById("name").value="";
+ document.getElementById("image").value="";
+ document.getElementById("description").value="";
+ document.getElementById("download").value="";
+ alert("تمت إضافة المود!");
+}
+
+function removeMod(i){
+ if(confirm("هل تريد حذف هذا المود؟")){
+ mods.splice(i,1);
+ save();
+ }
+}
+
+function editMod(i){
+ const name=prompt("اسم المود",mods[i].name);
+ if(name===null)return;
+ const description=prompt("الوصف",mods[i].description);
+ if(description===null)return;
+ const image=prompt("رابط الصورة",mods[i].image);
+ if(image===null)return;
+ const download=prompt("رابط التحميل",mods[i].download);
+ if(download===null)return;
+
+ mods[i]={name,image,description,download};
+ save();
+}
+
+function show(){
+ const area=document.getElementById("mods");
+ area.innerHTML="";
+
+ if(!mods.length){
+ area.innerHTML="<p>لا توجد مودات حتى الآن.</p>";
+ return;
+ }
+
+ mods.forEach((m,i)=>{
+ const div=document.createElement("div");
+ div.className="mod";
+
+ const title=document.createElement("h3");
+ title.textContent=m.name;
+ const desc=document.createElement("p");
+ desc.textContent=m.description;
+
+ const edit=document.createElement("button");
+ edit.textContent="تعديل";
+ edit.onclick=()=>editMod(i);
+
+ const del=document.createElement("button");
+ del.textContent="حذف";
+ del.className="delete";
+ del.onclick=()=>removeMod(i);
+
+ div.append(title,desc,edit,del);
+ area.appendChild(div);
+ });
+}
+
+function exportData(){
+ const blob=new Blob(
+ [JSON.stringify(mods,null,2)],
+ {type:"application/json"}
+ );
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="mods.json";
+ a.click();
+ URL.revokeObjectURL(url);
+}
+
+show();
+</script>
+</body>
+</html>
