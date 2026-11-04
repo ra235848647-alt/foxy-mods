@@ -1,1 +1,36 @@
-[]
+
+[
+  {
+    "id": "food-stuff",
+    "name": "Food & Stuff",
+    "type": "mod",
+    "platform": "bedrock",
+    "status": "متاح الآن",
+    "image": "🍔",
+    "description": "مود محاكاة المطاعم لماينكرافت.",
+    "version": "1.4",
+    "download": "https://www.curseforge.com/minecraft-bedrock/addons/food-addon-stuff"
+  },
+  {
+    "id": "najdi-souq",
+    "name": "Najdi Souq",
+    "type": "map",
+    "platform": "bedrock",
+    "status": "قريباً",
+    "image": "🏜️",
+    "description": "سوق نجدي بطابع تراثي.",
+    "version": "قيد التطوير",
+    "download": ""
+  },
+  {
+    "id": "resource-packs",
+    "name": "Resource Packs",
+    "type": "resource",
+    "platform": "java",
+    "status": "قريباً",
+    "image": "🎨",
+    "description": "حزم موارد لماينكرافت.",
+    "version": "قريباً",
+    "download": ""
+  }
+]
