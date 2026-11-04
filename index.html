@@ -47,10 +47,143 @@ footer{border-top:1px solid #ffffff18;padding:24px 0;color:#aaa}.foot{display:fl
 </main><footer><div class="wrap foot"><span>© 2026 FOXY MODS</span><span>صُنع لعشاق Minecraft 🧡</span></div></footer>
 <div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><button class="close" onclick="closeModal()">إغلاق ✕</button><div id="modalContent"></div></div></div>
 <script>
-let active='all';
-const cards=[...document.querySelectorAll('.card')], search=document.getElementById('search'), empty=document.getElementById('empty');
-function filterCards(){let q=search.value.trim().toLowerCase(),n=0;cards.forEach(c=>{let type=c.dataset.type,platform=c.dataset.platform;let match=(active==='all'||active===type||active===platform)&&((c.dataset.search+' '+c.innerText).toLowerCase().includes(q));c.style.display=match?'':'none';if(match)n++});empty.style.display=n?'none':'block'}
-document.querySelectorAll('.filter').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');active=b.dataset.filter;filterCards()}));search.addEventListener('input',filterCards);
-function showInfo(title,desc){document.getElementById('modalContent').innerHTML='<h3>'+title+'</h3><p>'+desc+'</p>';document.getElementById('overlay').classList.add('show')}
-function closeModal(){document.getElementById('overlay').classList.remove('show')}
+  
+let active = 'all';
+const cardsContainer = document.getElementById('cards');
+const search = document.getElementById('search');
+const empty = document.getElementById('empty');
+
+let mods = [];
+
+function safeUrl(value) {
+  try {
+    const url = new URL(value);
+    return ['https:', 'http:'].includes(url.protocol) ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
+function renderCards() {
+  cardsContainer.replaceChildren();
+
+  mods.forEach(mod => {
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.dataset.type = mod.type || '';
+    card.dataset.platform = mod.platform || '';
+    card.dataset.search = [
+      mod.name, mod.description, mod.version, mod.status
+    ].join(' ');
+
+    const image = document.createElement('div');
+    image.className = 'card-image';
+    image.textContent = mod.image || '📦';
+
+    const content = document.createElement('div');
+    content.className = 'card-content';
+
+    const title = document.createElement('h3');
+    title.textContent = mod.name || 'مود بدون اسم';
+
+    const status = document.createElement('span');
+    status.className = 'tag';
+    status.textContent = mod.status || '';
+
+    const description = document.createElement('p');
+    description.textContent = mod.description || '';
+
+    const info = document.createElement('p');
+    info.textContent = [
+      mod.platform || '',
+      mod.version || ''
+    ].filter(Boolean).join(' • ');
+
+    content.append(title, status, description, info);
+
+    const link = safeUrl(mod.download);
+    if (link) {
+      const download = document.createElement('a');
+      download.href = link;
+      download.target = '_blank';
+      download.rel = 'noopener noreferrer';
+      download.textContent = 'تحميل / زيارة';
+      content.append(download);
+    }
+
+    card.append(image, content);
+    cardsContainer.append(card);
+  });
+
+  filterCards();
+}
+
+function filterCards() {
+  const q = search.value.trim().toLowerCase();
+  let count = 0;
+
+  cardsContainer.querySelectorAll('.card').forEach(card => {
+    const matchType =
+      active === 'all' ||
+      active === card.dataset.type ||
+      active === card.dataset.platform;
+
+    const matchText =
+      (card.dataset.search + ' ' + card.innerText)
+      .toLowerCase().includes(q);
+
+    card.style.display = matchType && matchText ? '' : 'none';
+
+    if (matchType && matchText) count++;
+  });
+
+  empty.style.display = count ? 'none' : 'block';
+}
+
+document.querySelectorAll('.filter').forEach(button => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('.filter').forEach(item =>
+      item.classList.remove('active')
+    );
+
+    button.classList.add('active');
+    active = button.dataset.filter;
+    filterCards();
+  });
+});
+
+search.addEventListener('input', filterCards);
+
+function showInfo(title, desc) {
+  const content = document.getElementById('modalContent');
+  content.replaceChildren();
+
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+
+  const paragraph = document.createElement('p');
+  paragraph.textContent = desc;
+
+  content.append(heading, paragraph);
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('show');
+}
+
+fetch('./mods.json')
+  .then(response => {
+    if (!response.ok) throw new Error('تعذر تحميل المودات');
+    return response.json();
+  })
+  .then(data => {
+    mods = Array.isArray(data) ? data : [];
+    renderCards();
+  })
+  .catch(error => {
+    console.error(error);
+    empty.textContent = 'تعذر تحميل المودات. حاول لاحقاً.';
+    empty.style.display = 'block';
+  });
 </script></body></html>
